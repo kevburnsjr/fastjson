@@ -6,6 +6,8 @@ import (
 	"io/ioutil"
 	"strings"
 	"testing"
+
+	"github.com/minio/simdjson-go"
 )
 
 func BenchmarkParseRawString(b *testing.B) {
@@ -200,11 +202,29 @@ func benchmarkParse(b *testing.B, s string) {
 	b.Run("stdjson-empty-struct", func(b *testing.B) {
 		benchmarkStdJSONParseEmptyStruct(b, s)
 	})
+	b.Run("simdjson", func(b *testing.B) {
+		benchmarkSimdJSONParse(b, s)
+	})
 	b.Run("fastjson", func(b *testing.B) {
 		benchmarkFastJSONParse(b, s)
 	})
 	b.Run("fastjson-get", func(b *testing.B) {
 		benchmarkFastJSONParseGet(b, s)
+	})
+}
+
+func benchmarkSimdJSONParse(b *testing.B, s string) {
+	b.ReportAllocs()
+	b.SetBytes(int64(len(s)))
+	var bs = []byte(s)
+	var reuse = &simdjson.ParsedJson{}
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			_, err := simdjson.Parse(bs, reuse)
+			if err != nil {
+				panic(fmt.Errorf("unexpected error: %s", err))
+			}
+		}
 	})
 }
 
